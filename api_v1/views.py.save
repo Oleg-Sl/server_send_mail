@@ -1,0 +1,1214 @@
+from rest_framework import views, viewsets, filters, status, mixins, generics
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from django.shortcuts import render
+
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.views.generic import TemplateView
+from rest_framework.permissions import IsAuthenticated
+
+
+
+from django_filters import rest_framework as filters_externel
+from django_filters.rest_framework import DjangoFilterBackend
+
+from datetime import datetime, timedelta
+from django.db import models
+from django.db.models.functions import Coalesce
+from rest_framework.pagination import PageNumberPagination
+
+from statisticsapp.models import (Department,
+                                  User,
+                                  Direction,
+                                  Stage,
+                                  Company,
+                                  Deal)
+from cashflowapp.models import (TemplateParsing, TypeActivity, Items, Companies, Payment)
+from .serializers import (TemplateParsingSerializer,
+                          TypeActivitySerializer,
+                          ItemsSerializer,
+                          CompanieSerializer,
+                          PaymentSerializer,
+                          # SummaryItemsSerializer,
+                          SummarySerializer,
+                          SummaryBalanceSerializer,
+                          )
+# from duplicates.models import (Company,
+#                      Phones,
+#                      Email,
+#                      Web,
+#                      IM,
+#                      Contact,
+#                      Deal,
+#                      DuplicatesCompany)
+
+from api_v1.serializers import (DepartmentSerializer,
+                                UserSerializer,
+                                DirectionSerializer,
+                                StageSerializer,
+                                CompanySerializer,
+                                DealSerializer,
+                                StatisticSerializer)
+
+# from api_v1.views_duplacates import (DuplicatesCompanyViewSet,
+#                                     DuplicatesCompanyGetViewSet,
+#                                     DuplicatesViewSet)
+#
+# from duplicates import models as model_duplicates
+# from api_v1 import serializers_duplicates
+
+from rest_framework.permissions import BasePermission, IsAuthenticated, AllowAny
+
+from decimal import *
+import datetime
+
+from . import service
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+
+
+class CallCardView(TemplateView):
+    template_name = 'callcard/index.php'
+
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = Department.objects.all()
+    serializer_class = DepartmentSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = service.DepartmentDataFilter
+
+    # def get_queryset(self):
+    #     return Department.objects.filter(parent=None)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_class = service.UserDataFilter
+    search_fields = ["^lastname", "^name", ]
+
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user_id_bx = self.request.data["id_bx"]
+        url = f"https://atonlab.bitrix24.ru/company/personal/user/{user_id_bx}/"
+        serializer.save(url=url)
+
+
+class DirectionViewSet(viewsets.ModelViewSet):
+    queryset = Direction.objects.all()
+    serializer_class = DirectionSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter, filters.SearchFilter]
+    filterset_class = service.DirectionDataFilter
+
+
+class StageViewSet(viewsets.ModelViewSet):
+    queryset = Stage.objects.all()
+    serializer_class = StageSerializer
+
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ["^id_bx", "name", "^inn"]
+
+    def perform_create(self, serializer):
+        id_company = self.request.data["id_bx"]
+        url = f"https://atonlab.bitrix24.ru/crm/company/details/{id_company}/"
+        serializer.save(url=url, active=True)
+
+
+class DealViewSet(viewsets.ModelViewSet):
+    queryset = Deal.objects.all()
+    serializer_class = DealSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = service.DealDataFilter
+
+    def perform_create(self, serializer):
+        id_deal = self.request.data["id_bx"]
+        stage_abbr = self.request.data["stage"]
+        stage = get_object_or_404(Stage, abbrev=stage_abbr)
+        url = f"https://atonlab.bitrix24.ru/crm/deal/details/{id_deal}/"
+        serializer.save(stage=stage, url=url, active=True)
+
+
+# Контроллер обработки ссобытий BX24: onCrmCompanyAdd, onCrmCompanyUpdate, onCrmCompanyDelete
+class CompanyCreateUpdateViewSet(views.APIView):
+    def get_data(self, id_company):
+        """
+        Принимает id компании, делает запрос в BX24 для получения ее данных.
+
+        :param id_company: id компании
+        :type id_company: int
+        :return : объект с данными компании
+        :rtype: dict
+        """
+        data = service.get_data_company(id_company)
+        # print("Ответ от BX24: ", data)
+        if not data:
+            return None
+        id_bx_company = data.get("ID", None)
+        name_company = data.get("TITLE", None)
+        url_company = f"https://atonlab.bitrix24.ru/crm/company/details/{id_bx_company}/" if id_bx_company else None
+        inn_company = data.get("INN", None)
+        responsible_id_bx = data.get("ASSIGNED_BY_ID", None)
+
+        return {
+            "id_bx": id_bx_company,
+            "name": name_company,
+            "url": url_company,
+            "inn": inn_company,
+            "responsible": responsible_id_bx,
+        }
+
+    @staticmethod
+    def active_company(event):
+        """
+        Возвращает False если событие удаления компании, иначе True.
+
+        :param event: событие
+        :type event: str
+        :return : False - при событии удаления, иначе True
+        :rtype: bool
+        """
+        if event == "ONCRMCOMPANYDELETE":
+            return False
+        else:
+            return True
+
+    def fill_table_company(self, company):
+        """
+        Принимает компанию и сохраняет или обновляет ее в БД.
+
+        :param company: объект с данными компании
+        :type company: dict
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        exist_company = Company.objects.filter(id_bx=company["id_bx"]).first()  # объект компании, если она уже есть в БД
+        if not exist_company:
+            # при создании компании
+            serializer = CompanySerializer(data=company)
+        else:
+            # при обновлении компании
+            serializer = CompanySerializer(exist_company, data=company)
+
+        if serializer.is_valid():
+            serializer.save(url=company["url"])
+            # serializer.save(url=company["url"], active=company["active"])
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete_company(self, id_company):
+        """
+        Принимает id компании и устанавливает поле "active" в False - удалена из BX24.
+
+        :param id_company: id компании
+        :type id_company: int
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        exist_company = Company.objects.filter(id_bx=id_company).first()
+        if exist_company:
+            serializer = CompanySerializer(exist_company, data={"id_bx": id_company, "active": False})
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response("The company is not in the database", status=status.HTTP_204_NO_CONTENT)
+
+    def post(self, request):
+        """
+        Обработчик события добавление/изменение/удаление компании в BX24 (POST запрос).
+        Принимает id компании и тип события, делает запрос в BX24 для получения ее данных.
+        Сохраняет полученные данные компании в БД.
+
+        :param request: объек с данными POST запроса
+        :type request: dict
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        event = request.data.get("event", "")
+        id_company = request.data.get("data[FIELDS][ID]", None)
+
+        if not id_company:
+            # если ID компании отсутствует
+            return Response("Not transferred ID company", status=status.HTTP_400_BAD_REQUEST)
+
+        # компания активна (не удалена)
+        active = self.active_company(event)
+        if not active:
+            # изменяем поле "active" на - удалена из BX24
+            return self.delete_company(id_company)
+
+        # получить данные компании по ее ID
+        company = self.get_data(id_company)
+        if not company:
+            # если данные компании не получены
+            return Response("No response came from BX24", status=status.HTTP_400_BAD_REQUEST)
+
+        # если событие "удаление компании", то компания неактивна
+        company["active"] = True
+        # сохраниение компании в БД - таблица "Company"
+        response = self.fill_table_company(company)
+        return response
+
+
+# Обработчик событий изменение/обновление/удаление сделки: onCrmDealAdd, onCrmDealUpdate, onCrmDealDelete
+class DealCreateUpdateViewSet(views.APIView):
+    def get_data(self, id_deal):
+        """
+        Принимает id сделки, делает запрос в BX24 для получения ее данных.
+
+        :param id_deal: id сделки
+        :type id_deal: int
+        :return : объект с данными сделки
+        :rtype: dict
+        """
+        data = service.get_data_deal(id_deal)
+        if not data:
+            return
+
+        deal = {}
+        direction_id_bx = data.get("CATEGORY_ID", None)
+        if direction_id_bx == 43 or direction_id_bx == "43":
+            direction_id_bx = data.get("UF_CRM_1610523951", None)
+        deal["direction"] = direction_id_bx or None
+        deal["user"] = data.get("ASSIGNED_BY_ID", None)
+        deal["company"] = data.get("COMPANY_ID", None)
+        deal["stage_id_bx"] = data.get("STAGE_ID", None)
+
+        deal["id_bx"] = data.get("ID", None)
+        deal["title"] = data.get("TITLE", None)
+        deal["date_create"] = data.get("DATE_CREATE", None) or None
+        deal["date_modify"] = data.get("DATE_MODIFY", None) or None
+        deal["date_payment"] = data.get("UF_CRM_1553188396", None) or None
+        deal["opportunity"] = data.get("OPPORTUNITY", 0) or 0
+        closed_status = data.get("CLOSED", None)
+        deal["closed"] = self.get_status_deal(closed_status)
+        deal["date_closed"] = data.get("CLOSEDATE", None) or None
+
+        deal["balance_on_payments"] = self.editing_numb(data.get("UF_CRM_1575629957086", ""))
+        deal["amount_paid"] = self.editing_numb(data.get("UF_CRM_1575375338", ""))
+        deal["url"] = f"https://atonlab.bitrix24.ru/crm/deal/details/{deal['id_bx']}/" if deal['id_bx'] else None
+        return deal
+
+    @staticmethod
+    def get_status_deal(status_deal):
+        """
+        Преобразование статуса сделки к типу bool: 'Y' - сделка закрыта, иначе сделка активна
+
+        :param status_deal: событие
+        :type status_deal: str
+        :return : True - если пришло "Y", иначе False
+        :rtype: bool
+        """
+        if status_deal and status_deal == "Y":
+            return True
+        return False
+
+    @staticmethod
+    def editing_numb(numb):
+        """
+        Преобразует денежное значение в число
+
+        :param numb: денежное значение, число и валюта разделенные разделителем "|"
+        :type numb: str
+        :return : сумма
+        :rtype: float
+        """
+        """ Преобразование суммы к числу """
+        n = numb.split("|")[0] or "0"
+        if n:
+            return f"{float(n):.2f}"
+
+    @staticmethod
+    def active_deal(event):
+        """
+        Возвращает False если событие удаления сделки, иначе True.
+
+        :param event: событие
+        :type event: str
+        :return : False - при событии удаления, иначе True
+        :rtype: bool
+        """
+        if event == "ONCRMDEALDELETE":
+            return False
+        else:
+            return True
+
+    def fill_table_deal(self, deal):
+        """
+        Принимает сделку и сохраняет или обновляет ее в БД.
+
+        :param deal: объект с данными сделки
+        :type deal: dict
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        exist_deal = Deal.objects.filter(id_bx=deal["id_bx"]).first()
+        if not exist_deal:
+            serializer = DealSerializer(data=deal)
+        else:
+            serializer = DealSerializer(exist_deal, data=deal)
+
+        if serializer.is_valid():
+            serializer.save(url=deal["url"])
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete_deal(self, id_deal):
+        """
+        Принимает id сделки и устанавливает ее поле "active" в False - удалена из BX24.
+
+        :param id_deal: id сделки
+        :type id_deal: int
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        exist_deal = Deal.objects.filter(id_bx=id_deal).first()
+
+        if exist_deal:
+            serializer = DealSerializer(exist_deal, data={"id_bx": id_deal, "active": False})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response("The deal is not in the database", status=status.HTTP_204_NO_CONTENT)
+
+    def post(self, request):
+        """
+        Обработчик события добавление/изменение/удаление сделки в BX24 (POST запрос).
+        Принимает id сделки и тип события, делает запрос в BX24 для получения ее данных.
+        Сохраняет полученные данные сдеелки в БД.
+
+        :param request: объек с данными POST запроса
+        :type request: dict
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        event = request.data.get("event", None)
+        # id изменяемой сделки
+        id_deal = request.data.get("data[FIELDS][ID]", None)
+        if not id_deal:
+            # Если не передано значение id сделки - вернуть ошибку HTTP_400_BAD_REQUEST
+            return Response("Not transferred ID deal", status=status.HTTP_400_BAD_REQUEST)
+
+        active = self.active_deal(event)
+
+        if not active:
+            # изменяем поле "active" на - удалена из BX24
+            return self.delete_deal(id_deal)
+        # получение данных сделки по её id
+        deal = self.get_data(id_deal)
+        if not deal:
+            # если данные сделки не получены
+            return Response("No response came from BX24", status=status.HTTP_400_BAD_REQUEST)
+
+        deal["active"] = True
+
+        # получение объекта СТАДИИ из таблицы по его id в BX24
+        stage = None
+        if deal["stage_id_bx"]:
+            stage = Stage.objects.filter(abbrev=deal["stage_id_bx"]).first()
+            deal["stage"] = stage.pk if stage else None
+        # запись данных по сделке в БД - таблица Deal
+        response = self.fill_table_deal(deal)
+        return response
+
+
+# Контроллер обработки ссобытий BX24: OnVoximplantCallEnd
+class CallsCreateUpdateViewSet(views.APIView):
+    def get_duration_call(self, request):
+        """
+        Принимает запрос, извлекает из него длительность звока и возвращает ее.
+
+        :param request: данные запроса
+        :type request: dict
+        :return : длительность звонка
+        :rtype: float
+        """
+        duration = request.data.get("data[CALL_DURATION]", None)
+        try:
+            return float(duration)
+        except (ValueError, TypeError):
+            pass
+
+    def get_data(self, id_call):
+        """
+        Принимает id звонка, делает запрос в BX24 для получения его данных.
+
+        :param id_call: id звонка
+        :type id_call: int
+        :return : объект с данными звонка
+        :rtype: dict
+        """
+        response = service.get_data_call(id_call)
+        if not response:
+            return
+
+        # print("RESPONSE = ", response)
+        data = {}
+        data["date"] = response.get("CALL_START_DATE", None)
+        data["entity_type"] = response.get("CRM_ENTITY_TYPE", None)
+        data["entity_id"] = response.get("CRM_ENTITY_ID", None)
+        return data
+
+    def get_id_company_by_contact(self, id_contact):
+        """
+        Принимает id контакта, делает запрос в BX24 для получения данных о привязанной компании.
+
+        :param id_contact: id контакта
+        :type id_contact: int
+        :return : id компании
+        :rtype: int
+        """
+        response = service.get_data_company_by_contact(id_contact)
+
+        if response:
+            return response[0].get("COMPANY_ID", None)
+
+    def get_id_company_by_lead(self, id_lead):
+        """
+        Принимает id лида, делает запрос в BX24 для получения данных о привязанной компании.
+
+        :param id_lead: id лида
+        :type id_lead: int
+        :return : id компании
+        :rtype: int
+        """
+        response = service.get_data_company_by_lead(id_lead)
+        if response:
+            return response.get("COMPANY_ID", None)
+
+    def get_id_company_by_deal(self, id_deal):
+        """
+        Принимает id сделки, делает запрос в BX24 для получения данных о привязанной компании.
+
+        :param id_deal: id сделки
+        :type id_deal: int
+        :return : id компании
+        :rtype: int
+        """
+        response = service.get_data_company_by_deal(id_deal)
+        if response:
+            return response.get("COMPANY_ID", None)
+
+    def update_date_communication(self, id_company, date):
+        """
+        Принимает id компании и дату, обновляет дату последней коммуникации.
+
+        :param id_company: id компании
+        :type id_company: int
+        :param date: дата телефонного звонка
+        :type date: datetime
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        date_new = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S%z")
+        exist_company = Company.objects.filter(id_bx=id_company).first()
+        if exist_company and exist_company.date_last_communication < date_new:
+            serializer = CompanySerializer(exist_company, data={
+                "id_bx": id_company, "date_last_communication": date
+            })
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not exist_company:
+            return Response("The company is not in the database", status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response("The date of the last communication of the company is up-to-date", status=status.HTTP_204_NO_CONTENT)
+
+    def post(self, request):
+        """
+        Обработчик события закончен звонок в BX24 (POST запрос).
+        Принимает id компании и тип события, делает запрос в BX24 для получения ее данных.
+        Сохраняет полученные данные компании в БД.
+
+        :param request: объек с данными POST запроса
+        :type request: dict
+        :return : объект типа Response(<сообщение_ответа>, <статус_ответа>)
+        :rtype: Response()
+        """
+        id_call = request.data.get("data[CALL_ID]", None)
+        if not id_call:
+            # не передано значение id звонка - вернуть ошибку HTTP_400_BAD_REQUEST
+            return Response("Not transferred ID call", status=status.HTTP_400_BAD_REQUEST)
+
+        type_call = request.data.get("data[CALL_TYPE]", None)
+        if type_call not in ["1", 1]:
+            # если звонок не исходящий - не фиксируем активность
+            return Response("Incoming calls are not recorded", status=status.HTTP_400_BAD_REQUEST)
+
+        duration = self.get_duration_call(request)
+        if not duration or duration < 15:
+            # длительность звонка меньше 15 секунд - вернуть ошибку HTTP_400_BAD_REQUEST
+            return Response("Phone call duration is less than 15 seconds", status=status.HTTP_400_BAD_REQUEST)
+
+        # получение данных телефонного звонка
+        calls = self.get_data(id_call)
+        if not calls:
+            return Response("No response came from BX24", status=status.HTTP_400_BAD_REQUEST)
+
+        calls["id_company"] = None
+        if calls["entity_type"] == "CONTACT" and calls["entity_id"]:
+            calls["id_company"] = self.get_id_company_by_contact(calls["entity_id"])
+        if calls["entity_type"] == "LEAD" and calls["entity_id"]:
+            calls["id_company"] = self.get_id_company_by_lead(calls["entity_id"])
+        if calls["entity_type"] == "DEAL" and calls["entity_id"]:
+            calls["id_company"] = self.get_id_company_by_deal(calls["entity_id"])
+        if calls["entity_type"] == "COMPANY" and calls["entity_id"]:
+            calls["id_company"] = calls["entity_id"]
+
+        if calls["id_company"] and calls["date"]:
+            return self.update_date_communication(id_company=calls["id_company"], date=calls["date"])
+
+        return Response(
+            "Failed to update the date of the last communication of the company",
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class ActivityCreateUpdateViewSet(views.APIView):
+    """ Контроллер обработки ссобытий BX24: onCrmActivityAdd, onCrmActivityUpdate """
+    def get_data(self, id_activity):
+        data = service.get_data_activity(id_activity)
+        
+        if not data:
+            return None
+        # SELECT[]=OWNER_TYPE_ID&SELECT[]=OWNER_ID&SELECT[]=TYPE_ID&SELECT[]=CREATED&SELECT[]=DIRECTION
+        return {
+            "id_deal": data.get("ID", None),
+            "owner_type": data.get("OWNER_TYPE_ID", None),      # Тип собственника: 1 - "Лид", 2 - "Сделка", 3 - "Контакт", 4 - "Компания", 7 - "Предложение", 5 - "Счёт", 8 - "Реквизиты"
+            "owner_id": data.get("OWNER_ID", None),             # ID собственникаDIRECTION
+            "type": data.get("TYPE_ID", None),                  # Тип: 0 - "", 1 - "Встреча", 2 - "Звонок", 3 - "Задача", 4 - "Письмо", 5 - "Действие", 6 - "Пользовательское действие"
+            "date_created": data.get("CREATED", None),          # Дата создания
+            "direction_activity": data.get("DIRECTION", None),  # Направление дела: 0 - "", 1 - "Входящее", 2 - "Исходящее"
+            # "direction_deal": data.get("direction_deal", None)
+        }
+
+    def update_date_communication(self, activity):
+        # обновляемая сделка
+        deal = Deal.objects.filter(pk=activity["owner_id"]).first()
+        if not deal:
+            # Если сделки не существует для данной активности
+            return
+
+        date_new = datetime.strptime(activity["date_created"], "%Y-%m-%dT%H:%M:%S%z")
+        # обновление даты последней коммуникации в таблице "Deal"
+        if not deal.date_last_communication or deal.date_last_communication < date_new:
+            # Ксли у сделки нет даты или дата меньше переданной
+            deal.date_last_communication = date_new
+            deal.save()
+
+    def post(self, request):
+        event = request.data.get("event", "")
+        # id_activity = request.data.get("FIELDS", {}).get("ID", None)
+        id_activity = request.data.get("data[FIELDS][ID]", None)
+
+        if not id_activity:
+            return Response("Not transferred ID activity", status=status.HTTP_400_BAD_REQUEST)
+
+        activity = self.get_data(id_activity)
+        if not activity:
+            return Response("No response came from BX24", status=status.HTTP_400_BAD_REQUEST)
+
+        if activity["owner_type"] in [2, "2"] and activity["type"] in [2, "2"]:
+            # Если (тип собственника - "Сделка") и (тип события - "Звонок"),
+            # то обновляем дату последней коммуникации
+            self.update_date_communication(activity)
+
+        return Response(True, status=status.HTTP_201_CREATED)
+
+
+class ActivityViewSet(views.APIView):
+    """ Контроллер обработки ссобытий BX24: onCrmActivityAdd, onCrmActivityUpdate """
+
+    def update_date_communication(self, activity):
+        # обновляемая сделка
+        deal = Deal.objects.filter(pk=activity["owner_id"]).first()
+        if not deal:
+            # Если сделки не существует для данной активности
+            return
+
+        date_new = datetime.strptime(activity["date_created"], "%Y-%m-%dT%H:%M:%S%z")
+
+        # обновление даты последней коммуникации в таблице "Deal"
+        if not deal.date_last_communication or deal.date_last_communication < date_new:
+            # Ксли у сделки нет даты или дата меньше переданной
+            deal.date_last_communication = date_new
+            deal.save()
+
+    def post(self, request):
+        activity = request.data
+        if not activity:
+            return Response("No response came from BX24", status=status.HTTP_400_BAD_REQUEST)
+
+        if activity["owner_type"] in [2, "2"] and activity["type"] in [2, "2"]:
+            # Если (тип собственника - "Сделка") и (тип события - "Звонок"),
+            # то обновляем дату последней коммуникации
+            self.update_date_communication(activity)
+            # service.update_date_communication(date=activity["date_created"], id_deal=activity["owner_id"])
+
+        return Response(True, status=status.HTTP_201_CREATED)
+
+
+from email import encoders
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+import smtplib
+import os
+
+
+from . import secrets
+
+
+class SendEmailViewSet(views.APIView):
+    def send_mail(self, to_email, head, body, f_data, f_name):
+        secret_data = secrets.get_secrets()
+        if not secret_data or "server" not in secret_data or "username" not in secret_data or "password" not in secret_data:
+            return None
+
+        msg = MIMEMultipart()
+        password = secret_data["password"]
+        msg['From'] = secret_data["username"]
+        msg['To'] = to_email
+        msg['Subject'] = head
+        if body:
+            msg.attach(MIMEText(body))
+        if f_data:
+            attachment = MIMEBase('application', "octet-stream")
+            attachment.set_payload(f_data)
+            encoders.encode_base64(attachment)
+            # attachment.set_payload(f_data)
+            # msg.set_payload(f_data)
+            # msg['Content-Transfer-Encoding'] = 'base64'
+            attachment.add_header('Content-Disposition', f'attachment; filename="{f_name}"')
+            msg.attach(attachment
+
+
+        # Отправка сообщения
+        server = smtplib.SMTP(f'{secret_data["server"]}: 25')
+        server.starttls()
+        server.login(msg['From'], password)
+        server.sendmail(msg['From'], msg['To'], msg.as_string())
+        server.quit()
+
+    def get(self, request):
+        email = request.GET.get('to_email')
+        head = request.GET.get('head')
+        body = request.GET.get('body')
+        f_data = request.GET.get('f_data')
+        f_name = request.GET.get('f_name')
+        self.send_mail(email, head, body, f_data, f_name)
+        return Response({
+            "email": email,
+            "head": head,
+            "body": body,
+            "f_name": f_name
+        }, status=status.HTTP_201_CREATED)
+
+
+class StatisticViewSet(viewsets.ModelViewSet):
+    serializer_class = StatisticSerializer
+    pagination_class = CustomPageNumberPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = service.StatisticDataFilter
+    ordering_fields = ["id_bx", "name", "inn", "lastname", "summa_by_company_success", "summa_by_company_work", "date_last_communication"]
+
+    def get_queryset(self):
+        # date_modify_limit = datetime.now() - timedelta(days=183)    # предельная допустимая дата изменения сделки - за пол года до текущей даты
+        # Исключаем из подсчета сумм по компаниям следующие направления - 21, 23, 27, 41, 45
+        directions_actual = Direction.objects.exclude(pk__in=[21, 23, 27, 41, 45])
+        # исключаем из выода информацию о сделках с невыбранной компанией, т.е. id = 0
+        queryset = Company.objects.exclude(id_bx=0).select_related('responsible').annotate(
+            summa_by_company_success=Coalesce(
+                models.Sum("deal__opportunity",
+                           filter=models.Q(deal__closed=True,                           # сделка закрыта
+                                           deal__direction__in=directions_actual,       # сделки с направлениями кроме - 21, 23, 27, 41, 45
+                                           deal__stage__won=True,                       # сделка находится на стадии - завершена успешно
+                                           deal__active=True),                          # сделка не удалена из BX24
+                           output_field=models.FloatField()),
+                0.0
+            ),
+            summa_by_company_work=Coalesce(
+                models.Sum("deal__opportunity",
+                           filter=models.Q(deal__closed=False,          # сделка открыта
+                                           deal__direction__new=True,   # сдека имеет новое направление
+                                           deal__stage__status="1",     # сделка имеет статус "в работе"
+                                           # deal__stage__abbrev__in=['C43:7', 'C43:1', 'C43:2', 'C43:9', 'C43:11'],  # сделка находиттся на данных стадиях
+                                           # deal__date_modify__gt=date_modify_limit, # последнее изменение сделки не менее полугода назад
+                                           deal__active=True),          # сделка не удалена из BX24
+                           output_field=models.FloatField()),
+                0.0
+            ),
+            # date_last_communication=models.Max("deal__date_modify",
+            #                                     filter=models.Q(),
+            #
+            # ),
+            lastname=models.F("responsible__lastname")
+        )
+        # .order_by("-summa_by_company_success")
+        # .order_by(models.F("date").asc(nulls_first=True)).reverse()
+
+        return queryset
+
+
+
+
+
+
+import re
+import json
+class DealTemplateView(views.APIView):
+
+    @xframe_options_exempt
+    def post(self, request):
+        res = request.POST
+        # data1 = request.data
+        r = res.get("PLACEMENT_OPTIONS", [])
+        id_deal = re.search(r'\d+', r)[0]
+
+        data = {"id": id_deal,}
+        # data = {"header": r1, "message": r2}
+        # data = {"header": "Hello Django", "message": "Welcome to Python"}
+        return render(request, 'deal/index.html', context=data)
+        # return Response(True, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class CustomPageNumberPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+
+
+class NumberInFilter(filters_externel.BaseInFilter, filters_externel.NumberFilter):
+    pass
+
+
+class PaymentFilter(filters_externel.FilterSet):
+    o_date = filters_externel.DateFromToRangeFilter()
+    item = NumberInFilter(field_name='item__pk', lookup_expr='in')
+
+    class Meta:
+        model = Payment
+        fields = ["o_date", "pol_id", "plat_id", "item", ]
+
+
+class TemplateParsingViewSet(viewsets.ModelViewSet):
+    queryset = TemplateParsing.objects.all()
+    serializer_class = TemplateParsingSerializer
+    permission_classes = [AllowAny]
+
+
+class TypeActivityViewSet(viewsets.ModelViewSet):
+    queryset = TypeActivity.objects.all()
+    serializer_class = TypeActivitySerializer
+
+
+class ItemsViewSet(viewsets.ModelViewSet):
+    queryset = Items.objects.all()
+    serializer_class = ItemsSerializer
+    filter_backends = [filters.OrderingFilter]
+    ordering = ["sort", ]
+
+
+class CompaniesViewSet(viewsets.ModelViewSet):
+    queryset = Companies.objects.all()
+    serializer_class = CompanieSerializer
+
+    def get_queryset(self):
+        queryset = Companies.objects.all()\
+            .annotate(
+                amount_pol=models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(pol_id=models.OuterRef('pk'), o_date__gte=models.OuterRef("date_balance"))
+                            .values('pol_id').annotate(s=models.Sum('summa')).values('s')[:1]
+                    ),
+                    models.Value(0),
+                    output_field=models.DecimalField()
+                ),
+                amount_plat=models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(plat_id=models.OuterRef('pk'), o_date__gte=models.OuterRef("date_balance"))
+                            .values('plat_id').annotate(s=models.Sum('summa')).values('s')[:1]
+                    ),
+                    models.Value(0),
+                    output_field=models.DecimalField()
+                )
+            ).annotate(
+                balance=models.F("money") + models.F("amount_pol") + models.F("amount_plat"),
+            )
+        return queryset
+
+
+class PaymentViewSet(viewsets.ModelViewSet):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    pagination_class = CustomPageNumberPagination
+    filterset_class = PaymentFilter
+    filter_backends = [filters_externel.DjangoFilterBackend, filters.OrderingFilter]
+    ordering_fields = ["id", "summa", "o_date"]
+
+    def get_queryset(self):
+        companies = self.request.query_params.get("companies", None)
+        companies_list = []
+        if companies:
+            companies_list = companies.split(",")
+
+        if (companies_list):
+            queryset = Payment.objects.filter(models.Q(pol_id__pk__in=companies_list) | models.Q(plat_id__pk__in=companies_list))
+        else:
+            queryset = Payment.objects.all()
+
+        return queryset
+
+
+class SummaryTableApiView(views.APIView):
+
+    def get(self, request, format=None):
+        year_actual = datetime.datetime.now().timetuple()[0]
+        year = request.query_params.get("date", year_actual)
+        months = ["Январь", "Февраль", "Март",     "Апрель",  "Май",    "Июнь",
+                  "Июль",   "Август",  "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+
+        companies = Companies.objects.all()         # список компаний
+        activities = TypeActivity.objects.all()     # список видов деятельности
+
+        data = {}
+
+        for index, month in enumerate(months):
+            month_number = index + 1
+
+            # дата начала периода
+            period_start = datetime.date(int(year), int(index) + 1, 1)  # 2022-01-01, 2022-02-01, ..., 2022-12-01
+
+            # дата конца периода
+            if index + 1 < 12:  # 2022-01-31, 2022-02-28, ..., 2022-12-31
+                period_end = datetime.date(int(year), index + 1 + 1, 1) - datetime.timedelta(days=1)
+            else:
+                period_end = datetime.date(int(year) + 1, 1, 1) - datetime.timedelta(days=1)
+
+            queryset_activities = activities.prefetch_related(
+                models.Prefetch(
+                    'items',
+                    Items.objects.annotate(
+                        amount_by_items=models.Sum(
+                            'payment__summa',
+                            filter=models.Q(payment__o_date__year=year, payment__o_date__month=month_number)
+                        )
+                    ).order_by("sort")
+                )
+            ).annotate(
+                amount=models.Sum(
+                    'items__payment__summa',
+                    filter=models.Q(items__payment__o_date__year=year, items__payment__o_date__month=month_number)
+                )
+            ).order_by("-id")
+
+
+            queryset_companies = companies.annotate(
+                # сумма средств полученных компанией на начало периода
+                amount_start_pol=models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(
+                            pol_id=models.OuterRef('pk'),
+                            o_date__gte=models.OuterRef("date_balance"),
+                            o_date__lt=period_start
+                        ).values('pol_id').annotate(
+                            s=models.Sum('summa')
+                        ).values('s')[:1]
+                    ),
+                    models.Value(0),
+                    output_field=models.FloatField()
+                ) + models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(
+                            plat_id=models.OuterRef('pk'),
+                            o_date__gte=models.OuterRef("date_balance"),
+                            o_date__lt=period_start
+                        ).values('plat_id').annotate(
+                            s=models.Sum('summa')
+                        ).values('s')[:1]
+                    ),
+                    models.Value(0),
+                    output_field=models.FloatField()
+                ),
+                # сумма средств полученных компанией на конец периода
+                amount_end_pol=models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(
+                            pol_id=models.OuterRef('pk'),
+                            o_date__gte=models.OuterRef("date_balance"),
+                            o_date__lte=period_end
+                        ).values('pol_id').annotate(
+                            s=models.Sum('summa')
+                        ).values('s')[:1]
+                    ),
+                    models.Value(0),
+                    output_field=models.FloatField()
+                ) + models.functions.Coalesce(
+                    models.Subquery(
+                        Payment.objects.filter(
+                            plat_id=models.OuterRef('pk'),
+                            o_date__gte=models.OuterRef("date_balance"),
+                            o_date__lte=period_end
+                        ).values('plat_id').annotate(
+                            s=models.Sum('summa')).values('s')[:1]
+                    ),
+                     models.Value(0),
+                     output_field=models.FloatField()
+                 ),
+            ).annotate(
+                date_actual=models.Value(datetime.datetime.today().date()),
+                # amount_start_plat=models.Value("0"),
+                # amount_end_plat=models.Value("0"),
+            ).annotate(
+                # баланс компании на начало периода
+                balance_start_month=models.Case(
+                    models.When(date_balance__gt=period_start, then=models.Value("0")),                         # если ДАТА БАЛАНСА > ДАТА НАЧАЛА ПЕРИОДА = 0
+                    models.When(date_actual__lt=period_start, then=models.Value("0")),                          # если ДАТА НАЧАЛА ПЕРИОДА > ТЕКУЩАЯ ДАТА = 0
+                    default=models.F("money") + models.F("amount_start_pol"),
+                    # default=models.F("money") + models.F("amount_start_pol") + models.F("amount_start_plat"),
+                    output_field=models.FloatField()
+                ),
+                # баланс компании на конец периода
+                balance_end_month=models.Case(
+                    models.When(date_balance__gt=period_end, then=models.Value("0")),                       #
+                    models.When(date_actual__lt=period_start, then=models.Value("0")),                      #
+                    default=models.F("money") + models.F("amount_end_pol"),
+                    # default=models.F("money") + models.F("amount_end_pol") + models.F("amount_end_plat"),
+                    output_field=models.FloatField()
+                ),
+            )
+
+            serializer_activities = SummarySerializer(queryset_activities, many=True)
+            serializer_companies = SummaryBalanceSerializer(queryset_companies, many=True)
+
+            data[index + 1] = {
+                "expenses": serializer_activities.data,                 # расходы по статьям
+                "balance": serializer_companies.data,                   # баланс компании по периодам
+                "date_start_month": period_start,                       # дата начало периода
+                "date_end_month": period_end,                           # дата конца периода
+            }
+
+        return Response(data)
+
+
+
+
+
+
+
+
+
+
+
+
+                # amount_start_pol=models.functions.Coalesce(
+                #     models.Sum(models.F("payment_pol__summa"),
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lt=period_start,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_start_plat=models.functions.Coalesce(
+                #     models.Sum(models.F("payment_plat__summa"),
+                #                filter=models.Q(
+                #                    payment_plat__o_date__gte=models.F("date_balance"),
+                #                    payment_plat__o_date__lt=period_start,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_end_pol=models.functions.Coalesce(
+                #     models.Sum(models.F("payment_pol__summa"),
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lte=period_end,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_end_plat=models.functions.Coalesce(
+                #     models.Sum(models.F("payment_plat__summa"),
+                #                filter=models.Q(
+                #                    payment_plat__o_date__gte=models.F("date_balance"),
+                #                    payment_plat__o_date__lte=period_end,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # )
+  # amount_start_pol=models.functions.Coalesce(
+                #     models.Sum("payment_pol__summa",
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lt=period_start,
+                #                ),
+                #                field='payment_pol__summa+payment_plat__summa',
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_end_pol=models.functions.Coalesce(
+                #     models.Sum("payment_pol__summa",
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lte=period_end,
+                #                ),
+                #                field='payment_pol__summa+payment_plat__summa',
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_start_pol=models.functions.Coalesce(
+                #     models.Sum("payment_pol__summa",
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lt=period_start,
+                #                ),
+                #                distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_start_plat=models.functions.Coalesce(
+                #     models.Sum("payment_plat__summa",
+                #                filter=models.Q(
+                #                    payment_plat__o_date__gte=models.F("date_balance"),
+                #                    payment_plat__o_date__lt=period_start,
+                #                ),
+                #                distinct=True,
+                #                ),
+                #     Decimal(0)
+                # ),
+                # amount_end_pol=models.Subquery(models.functions.Coalesce(
+                #     models.Sum("payment_pol__summa",
+                #                filter=models.Q(
+                #                    payment_pol__o_date__gte=models.F("date_balance"),
+                #                    payment_pol__o_date__lte=period_end,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # )),
+                # amount_end_plat=models.functions.Coalesce(
+                #     models.Sum("payment_plat__summa",
+                #                filter=models.Q(
+                #                    payment_plat__o_date__gte=models.F("date_balance"),
+                #                    payment_plat__o_date__lte=period_end,
+                #                ),
+                #                # distinct=True,
+                #                ),
+                #     Decimal(0)
+                # )
+# class CompaniesViewSet(viewsets.ModelViewSet):
+#     queryset = Companies.objects.all()
+#     serializer_class = CompanieSerializer
+#
+#     def get_queryset(self):
+#         queryset = Companies.objects.all().annotate(
+#             amount_pol=models.functions.Coalesce(
+#                 models.Sum("payment_pol__summa",
+#                            filter=models.Q(payment_pol__o_date__gte=models.F("date_balance")),
+#                            distinct=True,
+#                            ),
+#                 Decimal(0)
+#             ),
+#             amount_plat=models.functions.Coalesce(
+#                 models.Sum("payment_plat__summa",
+#                            filter=models.Q(
+#                                payment_plat__o_date__gte=models.F("date_balance"),
+#                            ),
+#                            distinct=True,
+#                            ),
+#                 Decimal(0)
+#             ),
+#         ).annotate(
+#             balance=models.F("money") + models.F("amount_pol") + models.F("amount_plat"),
+#         )
+#         return queryset
+

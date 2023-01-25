@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+
+
+{% load static %}
+
+
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <div>{% request% }</div>
+    <div>Hello!</div>
+    <div id="name"></div>
+    <input type="button" id="button" value="Кнопка">
+    <script src="//api.bitrix24.com/api/v1/"></script>
+    <script>
+        BX24.init(async () => {
+            let button = document.getElementById('button');
+            BX24.placement.bindEvent('CallCard::BeforeClose', () => {
+                console.log("CallCard::BeforeClose = ")
+            });
+
+            button.addEventListener('click', async (e) => {
+                console.log("Нажали кнопку!");
+
+                  BX24.placement.call('getStatus', {}, (res) => {
+                      console.log("CALL_CARD getStatus = ", res);
+                  })
+
+            })
+
+        })
+    </script>
+  </body>
+</html>

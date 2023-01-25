@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+
+    <!-- CSS -->
+    <!-- <link rel="stylesheet" href="./style/deal.css"> -->
+
+    <style>
+        body {
+  background: #E7E8EA;
+}
+
+.container-production .task-header, .container-mounting .task-header {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  margin: 15px 10px 10px 10px;
+}
+
+.container-production .task-new, .container-mounting .task-new {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 1fr 450px;
+      grid-template-columns: 1fr 450px;
+  -webkit-box-align: start;
+      -ms-flex-align: start;
+          align-items: start;
+  background: #F9FAFB;
+}
+
+@media (max-width: 1200px) {
+  .container-production .task-new, .container-mounting .task-new {
+    -ms-grid-columns: 1fr;
+        grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1400px) {
+  .container-production .task-new, .container-mounting .task-new {
+    -ms-grid-columns: 2fr 1fr;
+        grid-template-columns: 2fr 1fr;
+  }
+}
+
+.container-production .task-new .task-new-setings, .container-mounting .task-new .task-new-setings {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
+  -webkit-column-gap: 10px;
+          column-gap: 10px;
+  row-gap: 10px;
+  -webkit-box-align: start;
+      -ms-flex-align: start;
+          align-items: start;
+  padding: 5px;
+}
+
+.container-production .task-new .task-new-setings label, .container-mounting .task-new .task-new-setings label {
+  margin-bottom: 2px;
+}
+
+.container-production .task-new .task-new-setings .description-for-task-production, .container-production .task-new .task-new-setings .description-for-task-mounting, .container-mounting .task-new .task-new-setings .description-for-task-production, .container-mounting .task-new .task-new-setings .description-for-task-mounting {
+  -ms-grid-column: 1;
+      grid-column-start: 1;
+  grid-column-end: 3;
+}
+
+.container-production .task-new .task-new-setings .address-for-task-mounting textarea, .container-mounting .task-new .task-new-setings .address-for-task-mounting textarea {
+  height: 38px;
+}
+
+.container-production .task-new .task-new-checklist, .container-mounting .task-new .task-new-checklist {
+  padding: 5px;
+  min-height: 50vh;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple, .container-mounting .task-new .task-new-checklist .task-new-multiple {
+  display: none;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 1fr 20px 20px;
+      grid-template-columns: 1fr 20px 20px;
+  margin-bottom: 5px;
+  -webkit-column-gap: 5px;
+          column-gap: 5px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#00A185), to(#33B49D));
+  background: linear-gradient(90deg, #00A185 0%, #33B49D 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup::before, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup::before {
+  position: absolute;
+  left: 2px;
+  top: -11px;
+  content: '+';
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup:hover, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-addgroup:hover {
+  background: #23896c;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#00c7a6), to(#06af90));
+  background: linear-gradient(90deg, #00c7a6 0%, #06af90 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup::before, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup::before {
+  position: absolute;
+  left: 2px;
+  top: -25px;
+  content: '-';
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 100;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup:hover, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-header-content .task-group-delgroup:hover {
+  background: #23896c;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 1fr 75px 20px 20px;
+      grid-template-columns: 1fr 75px 20px 20px;
+  margin-bottom: 5px;
+  -webkit-column-gap: 5px;
+          column-gap: 5px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#CDA413), to(#FFF500));
+  background: linear-gradient(90deg, #CDA413 0%, #FFF500 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add::before, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add::before {
+  position: absolute;
+  left: 2px;
+  top: -11px;
+  content: '+';
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add:hover, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-add:hover {
+  background: #f9e70c;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#CDA413), to(#FFF500));
+  background: linear-gradient(90deg, #CDA413 0%, #FFF500 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove::before, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove::before {
+  position: absolute;
+  left: 2px;
+  top: -25px;
+  content: '-';
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 100;
+}
+
+.container-production .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove:hover, .container-mounting .task-new .task-new-checklist .task-new-multiple .task-group-item .task-group-item-remove:hover {
+  background: #f9e70c;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item, .container-mounting .task-new .task-new-checklist .task-one .task-one-item {
+  display: -ms-grid;
+  display: grid;
+  -ms-grid-columns: 1fr 75px 20px 20px;
+      grid-template-columns: 1fr 75px 20px 20px;
+  margin-bottom: 5px;
+  -webkit-column-gap: 5px;
+          column-gap: 5px;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-add, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-add {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#00A185), to(#33B49D));
+  background: linear-gradient(90deg, #00A185 0%, #33B49D 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-add::before, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-add::before {
+  position: absolute;
+  left: 2px;
+  top: -11px;
+  content: '+';
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-add:hover, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-add:hover {
+  background: #23896c;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-remove, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-remove {
+  -ms-flex-item-align: center;
+      -ms-grid-row-align: center;
+      align-self: center;
+  position: relative;
+  background: -webkit-gradient(linear, left top, right top, from(#00c7a6), to(#06af90));
+  background: linear-gradient(90deg, #00c7a6 0%, #06af90 100%);
+  border-radius: 50% !important;
+  height: 20px;
+  width: 20px;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-remove::before, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-remove::before {
+  position: absolute;
+  left: 2px;
+  top: -25px;
+  content: '-';
+  color: #ffffff;
+  font-size: 40px;
+  font-weight: 100;
+}
+
+.container-production .task-new .task-new-checklist .task-one .task-one-item .task-one-remove:hover, .container-mounting .task-new .task-new-checklist .task-one .task-one-item .task-one-remove:hover {
+  background: #23896c;
+}
+
+.container-production .task-list, .container-mounting .task-list {
+  min-height: 250px
+}
+/*# sourceMappingURL=dealdata.css.map */
+    </style>
+
+    <title>Document</title>
+</head>
+<body>
+    <div class="container-fluid payment-app  my-app">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="production-tab" data-bs-toggle="tab" data-bs-target="#production" type="button" role="tab" aria-controls="production" aria-selected="true">ТЗ на производство</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="mounting-tab" data-bs-toggle="tab" data-bs-target="#mounting" type="button" role="tab" aria-controls="mounting" aria-selected="false">ТЗ на монтаж</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="production" role="tabpanel" aria-labelledby="production-tab">
+                <!-- Блок - ТЗ на производство -->
+                <div class="container-production">
+                    <!-- Заголовок -->
+                    <div class="task-header production-task-header">
+                        <div><a href="">1198КО | Оклейка авто | Монтаж</a></div>
+                        <div><a href="">Задача</a></div>
+                    </div>
+                    
+                    <!-- Блок создание задачи на производство -->
+                    <div class="task-new production-task-new">
+                        <!-- Блок - поля для заполнения данных задачи на производство -->
+                        <div class="task-new-setings production-task-new-setings">
+                            <div class="responsible-for-task-production">
+                                <label for="responsibleForTaskProduction" class="form-label">Ответственный за производство</label>
+                                <input class="form-control" type="text" autocomplete="off" placeholder="Назначьте ответственного за производство" aria-label="default input example" id="responsibleForTaskProduction">
+                            </div>
+                            <div class="deadline-for-task-production">
+                                <label for="deadlineForTaskProduction" class="form-label">Дата завершения</label>
+                                <input class="form-control" type="date" autocomplete="off" placeholder="Укажите крайний срок монтажа" aria-label="default input example" id="deadlineForTaskProduction">
+                            </div>
+                            <div class="technology-for-task-production">
+                                <label for="technologyForTaskProduction" class="form-label">Технология производства</label>
+                                <input class="form-control" type="text" autocomplete="off" placeholder="Укажите технологию производства" aria-label="default input example" id="technologyForTaskProduction">
+                            </div>
+                            <div class="description-for-task-production">
+                                <label for="descriptionForTaskProduction" class="form-label">Примечание</label>
+                                <textarea class="form-control" placeholder="Опишите, что нужно сделать по заказу" aria-label="default input example" id="descriptionForTaskProduction"></textarea>
+                            </div>
+                            <div class="files-for-task-production">
+                                <label for="filesForTaskProduction" class="form-label">Файлы для производства</label>
+                                <input class="form-control" multiple type="file" placeholder="Приложите файлы" aria-label="default input example" id="filesForTaskProduction">
+                            </div>
+                            <div class="href-for-task-production">
+                                <label for="hrefForTaskProduction" class="form-label">Ссылки для производства</label>
+                                <input class="form-control" multiple type="url" placeholder="Ссылка на фаил для производства" aria-label="default input example" id="hrefForTaskProduction">
+                            </div>
+                        </div>
+                        <!-- Блок - чеклист для заполнения данных задачи на производство -->
+                        <div class="task-new-checklist production-task-new-checklist">
+                            <div class="position-relative">
+                                <label for="responsibleForTaskProduction" class="form-label">Задача на производство</label>
+                                <select class="form-select production-task-new-checklist-type" required>
+                                    <option value="multiple">На каждую группу отдельно</option>
+                                    <option  selected value="one">На каждую единицу отдельно</option>
+                                </select>
+                            </div>
+                            +++++++++++++++++++++++++++
+                            <div class="task-new-multiple production-task-new-multiple">
+                                <div class="production-task-group">
+                                    <div class="production-task-group-header">
+                                        <label for="" class="form-label">Группа 1</label>
+                                        <div class="task-group-header-content production-task-group-header-content">
+                                            <div class="production-task-group-header-title">
+                                                <input type="text" class="form-control production-task-group-header-title-input" placeholder="Введите название группы 1">
+                                            </div>
+                                            <div class="task-group-addgroup production-task-group-addgroup" title="Добавить группу"></div>
+                                            <div class="task-group-delgroup production-task-group-delgroup" title="Удалить группу"></div>
+                                        </div>
+                                    </div>
+                                    <label for="" class="form-label">Чек-лист</label>
+                                    <div class="production-task-group-list">
+                                        <div class="task-group-item production-task-group-item">
+                                            <div class="production-task-group-item-name">
+                                                <input type="text" class="form-control production-task-group-item-name-input" placeholder="Номер или название">
+                                            </div>
+                                            <div class="production-task-group-item-area">
+                                                <input type="number" class="form-control form-control production-task-group-item-area-input" placeholder="м2">
+                                            </div>
+                                            <div class="task-group-item-add production-task-group-item-add" title="Добавить элемент в группу"></div>
+                                            <div class="task-group-item-remove production-task-group-item-remove" title="Удалить элемент из группы"></div>
+                                        </div>
+                                        <div class="task-group-item production-task-group-item">
+                                            <div class="production-task-group-item-name">
+                                                <input type="text" class="form-control production-task-group-item-name-input" placeholder="Номер или название">
+                                            </div>
+                                            <div class="production-task-group-item-area">
+                                                <input type="number" class="form-control production-task-group-item-area-input" placeholder="м2">
+                                            </div>
+                                            <div class="task-group-item-add production-task-group-item-add" title="Добавить элемент в группу"></div>
+                                            <div class="task-group-item-remove production-task-group-item-remove" title="Удалить элемент из группы"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            +++++++++++++++++++++++++++
+                            <div class="task-one production-task-one">
+                                <div class="task-one-item pproduction-task-one-item">
+                                    <div class="production-task-one-name">
+                                        <input type="text" class="form-control production-task-one-name-input" placeholder="Номер или название">
+                                    </div>
+                                    <div class="production-task-one-area">
+                                        <input type="number" class="form-control production-task-one-area-input" placeholder="м2">
+                                    </div>
+                                    <div class="task-one-add production-task-one-add" title="Добавить элемент в группу"></div>
+                                    <div class="task-one-remove production-task-one-remove" title="Удалить элемент из группы"></div>
+                                </div>
+                                <div class="task-one-item pproduction-task-one-item">
+                                    <div class="production-task-one-name">
+                                        <input type="text" class="form-control production-task-one-name-input" placeholder="Номер или название">
+                                    </div>
+                                    <div class="production-task-one-area">
+                                        <input type="number" class="form-control production-task-one-area-input" placeholder="м2">
+                                    </div>
+                                    <div class="task-one-add production-task-one-add" title="Добавить элемент в группу"></div>
+                                    <div class="task-one-remove production-task-one-remove" title="Удалить элемент из группы"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Блок с списком задач на производство -->
+                    <div class="task-list production-task-list">
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="mounting" role="tabpanel" aria-labelledby="mounting-tab">
+                <!-- Блок - ТЗ на монтаж -->
+                <div class="container-mounting">
+                    <!-- Заголовок -->
+                    <div class="task-header mounting-task-header">
+                        <div><a href="">1198КО | Оклейка авто | Монтаж</a></div>
+                        <div><a href="">Задача</a></div>
+                    </div>
+                    
+                    <!-- Блок создание задачи на монтаж -->
+                    <div class="task-new mounting-task-new">
+                        <!-- Блок - поля для заполнения данных задачи на монтаж -->
+                        <div class="task-new-setings mounting-task-new-setings">
+                            <div class="responsible-for-task-mounting">
+                                <label for="responsibleForTaskMounting" class="form-label">Ответственный за монтаж</label>
+                                <input class="form-control" type="text" autocomplete="off" placeholder="Назначьте ответственного за монтаж" aria-label="default input example" id="responsibleForTaskMounting">
+                            </div>
+                            <div class="address-for-task-mounting">
+                                <label for="addressForTaskMounting" class="form-label">Адрес</label>
+                                <textarea class="form-control" placeholder="Укажите адрес проведения монтажа" aria-label="default input example" id="addressForTaskMounting"></textarea>
+                            </div>
+                            <div class="contact-for-task-mounting">
+                                <label for="contactForTaskMounting" class="form-label">Контакт</label>
+                                <input class="form-control" type="text" autocomplete="off" placeholder="Укажите контакт" aria-label="default input example" id="contactForTaskMounting">
+                            </div>
+                            <div class="deadline-for-task-mounting">
+                                <label for="deadlineForTaskMounting" class="form-label">Дата завершения</label>
+                                <input class="form-control" type="date" autocomplete="off" placeholder="Укажите крайний срок монтажа" aria-label="default input example" id="deadlineForTaskMounting">
+                            </div>
+                            <div class="description-for-task-mounting">
+                                <label for="descriptionForTaskMounting" class="form-label">Примечание</label>
+                                <textarea class="form-control" placeholder="Опишите, что нужно сделать по заказу" aria-label="default input example" id="descriptionForTaskMounting"></textarea>
+                            </div>
+                            <div class="photobinding-for-task-mounting">
+                                <label for="photobindingForTaskMounting" class="form-label">Фотопривязка</label>
+                                <input class="form-control" multiple type="file" placeholder="Приложите файлы" aria-label="default input example" id="photobindingForTaskMounting">
+                            </div>
+
+                        </div>
+                        <!-- Блок - чеклист для заполнения данных задачи на монтаж -->
+                        <div class="task-new-checklist mounting-task-new-checklist">
+                            <div class="position-relative">
+                                <label for="responsibleForTaskProduction" class="form-label">Задача на производство</label>
+                                <select class="form-select mounting-task-new-checklist-type" required>
+                                    <option value="multiple">На каждую группу отдельно</option>
+                                    <option  selected value="one">На каждую единицу отдельно</option>
+                                </select>
+                            </div>
+                            +++++++++++++++++++++++++++
+                            <div class="task-new-multiple mounting-task-new-multiple">
+                                <div class="mounting-task-group">
+                                    <div class="mounting-task-group-header">
+                                        <label for="" class="form-label">Группа 1</label>
+                                        <div class="task-group-header-content mounting-task-group-header-content">
+                                            <div class="mounting-task-group-header-title">
+                                                <input type="text" class="form-control mounting-task-group-header-title-input" placeholder="Введите название группы 1">
+                                            </div>
+                                            <div class="task-group-addgroup mounting-task-group-addgroup" title="Добавить группу"></div>
+                                            <div class="task-group-delgroup mounting-task-group-delgroup" title="Удалить группу"></div>
+                                        </div>
+                                    </div>
+                                    <label for="" class="form-label">Чек-лист</label>
+                                    <div class="mounting-task-group-list">
+                                        <div class="task-group-item mounting-task-group-item">
+                                            <div class="mounting-task-group-item-name">
+                                                <input type="text" class="form-control mounting-task-group-item-name-input" placeholder="Номер или название">
+                                            </div>
+                                            <div class="mounting-task-group-item-area">
+                                                <input type="number" class="form-control form-control mounting-task-group-item-area-input" placeholder="м2">
+                                            </div>
+                                            <div class="task-group-item-add mounting-task-group-item-add" title="Добавить элемент в группу"></div>
+                                            <div class="task-group-item-remove mounting-task-group-item-remove" title="Удалить элемент из группы"></div>
+                                        </div>
+                                        <div class="task-group-item mounting-task-group-item">
+                                            <div class="mounting-task-group-item-name">
+                                                <input type="text" class="form-control mounting-task-group-item-name-input" placeholder="Номер или название">
+                                            </div>
+                                            <div class="mounting-task-group-item-area">
+                                                <input type="number" class="form-control mounting-task-group-item-area-input" placeholder="м2">
+                                            </div>
+                                            <div class="task-group-item-add mounting-task-group-item-add" title="Добавить элемент в группу"></div>
+                                            <div class="task-group-item-remove mounting-task-group-item-remove" title="Удалить элемент из группы"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            +++++++++++++++++++++++++++
+                            <div class="task-one mounting-task-one">
+                                <div class="task-one-item mounting-task-one-item">
+                                    <div class="mounting-task-one-name">
+                                        <input type="text" class="form-control mounting-task-one-name-input" placeholder="Номер или название">
+                                    </div>
+                                    <div class="mounting-task-one-area">
+                                        <input type="number" class="form-control mounting-task-one-area-input" placeholder="м2">
+                                    </div>
+                                    <div class="task-one-add mounting-task-one-add" title="Добавить элемент в группу"></div>
+                                    <div class="task-one-remove mounting-task-one-remove" title="Удалить элемент из группы"></div>
+                                </div>
+                                <div class="task-one-item mounting-task-one-item">
+                                    <div class="mounting-task-one-name">
+                                        <input type="text" class="form-control mounting-task-one-name-input" placeholder="Номер или название">
+                                    </div>
+                                    <div class="mounting-task-one-area">
+                                        <input type="number" class="form-control mounting-task-one-area-input" placeholder="м2">
+                                    </div>
+                                    <div class="task-one-add mounting-task-one-add" title="Добавить элемент в группу"></div>
+                                    <div class="task-one-remove mounting-task-one-remove" title="Удалить элемент из группы"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Блок с списком задач на монтаж -->
+                    <div class="task-list mounting-task-list">
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+
+    <!-- Bitrix JS -->
+    <script src="//api.bitrix24.com/api/v1/"></script>
+
+    <!-- JS -->
+    <!-- <script type="module" src="./scripts/deal.js"></script> -->
+    <script>
+        // HTML код одной записи при создании задач на каждую единицу отдельно
+        const PRODUCTION_HTML_ONE_ELEM = `
+            <div class="task-one-item pproduction-task-one-item">
+                <div class="production-task-one-name">
+                    <input type="text" class="form-control production-task-one-name-input" placeholder="Номер или название">
+                </div>
+                <div class="production-task-one-area">
+                    <input type="number" class="form-control production-task-one-area-input" placeholder="м2">
+                </div>
+                <div class="task-one-add production-task-one-add" title="Добавить элемент в группу"></div>
+                <div class="task-one-remove production-task-one-remove" title="Удалить элемент из группы"></div>
+            </div>
+        `;
+        // HTML код одной записи при создании задач на каждую единицу отдельно
+        const MOUNTING_HTML_ONE_ELEM = `
+            <div class="task-one-item mounting-task-one-item">
+                <div class="mounting-task-one-name">
+                    <input type="text" class="form-control mounting-task-one-name-input" placeholder="Номер или название">
+                </div>
+                <div class="mounting-task-one-area">
+                    <input type="number" class="form-control mounting-task-one-area-input" placeholder="м2">
+                </div>
+                <div class="task-one-add mounting-task-one-add" title="Добавить элемент в группу"></div>
+                <div class="task-one-remove mounting-task-one-remove" title="Удалить элемент из группы"></div>
+            </div>
+        `;
+        // HTML код одной записи при создании задач на каждую группу отдельно
+        const PRODUCTION_HTML_MULT_ELEM = `
+            <div class="task-group-item production-task-group-item">
+                <div class="production-task-group-item-name">
+                    <input type="text" class="form-control production-task-group-item-name-input" placeholder="Номер или название">
+                </div>
+                <div class="production-task-group-item-area">
+                    <input type="number" class="form-control form-control production-task-group-item-area-input" placeholder="м2">
+                </div>
+                <div class="task-group-item-add production-task-group-item-add" title="Добавить элемент в группу"></div>
+                <div class="task-group-item-remove production-task-group-item-remove" title="Удалить элемент из группы"></div>
+            </div>
+        `;
+        // HTML код одной записи при создании задач на каждую группу отдельно
+        const MOUNTING_HTML_MULT_ELEM = `
+            <div class="task-group-item mounting-task-group-item">
+                <div class="mounting-task-group-item-name">
+                    <input type="text" class="form-control mounting-task-group-item-name-input" placeholder="Номер или название">
+                </div>
+                <div class="mounting-task-group-item-area">
+                    <input type="number" class="form-control form-control mounting-task-group-item-area-input" placeholder="м2">
+                </div>
+                <div class="task-group-item-add mounting-task-group-item-add" title="Добавить элемент в группу"></div>
+                <div class="task-group-item-remove mounting-task-group-item-remove" title="Удалить элемент из группы"></div>
+            </div>
+        `;
+
+
+        const PRODUCTION_HTML_MULT_GROUP = (index) => {
+            return `
+                <div class="production-task-group">
+                    <div class="production-task-group-header">
+                        <label for="" class="form-label">Группа ${index}</label>
+                        <div class="task-group-header-content production-task-group-header-content">
+                            <div class="production-task-group-header-title">
+                                <input type="text" class="form-control production-task-group-header-title-input" placeholder="Введите название группы ${index}">
+                            </div>
+                            <div class="task-group-addgroup production-task-group-addgroup" title="Добавить группу"></div>
+                            <div class="task-group-delgroup production-task-group-delgroup" title="Удалить группу"></div>
+                        </div>
+                    </div>
+                    <label for="" class="form-label">Чек-лист группы ${index}</label>
+                    <div class="production-task-group-list">
+                        ${PRODUCTION_HTML_MULT_ELEM}
+                        ${PRODUCTION_HTML_MULT_ELEM}
+                    </div>
+                </div>
+            `;
+        }
+
+        const MOUNTING_HTML_MULT_GROUP = (index) => {
+            return `
+                <div class="mounting-task-group">
+                    <div class="mounting-task-group-header">
+                        <label for="" class="form-label">Группа ${index}</label>
+                        <div class="task-group-header-content mounting-task-group-header-content">
+                            <div class="mounting-task-group-header-title">
+                                <input type="text" class="form-control mounting-task-group-header-title-input" placeholder="Введите название группы ${index}">
+                            </div>
+                            <div class="task-group-addgroup mounting-task-group-addgroup" title="Добавить группу"></div>
+                            <div class="task-group-delgroup mounting-task-group-delgroup" title="Удалить группу"></div>
+                        </div>
+                    </div>
+                    <label for="" class="form-label">Чек-лист группы ${index}</label>
+                    <div class="mounting-task-group-list">
+                        ${MOUNTING_HTML_MULT_ELEM}
+                        ${MOUNTING_HTML_MULT_ELEM}
+                    </div>
+                </div>
+            `;
+        }
+
+
+
+        // поля сделки
+        const FIELD_DEAL = {
+            "AUTOLIST": "UF_CRM_1637533967",                    // Поле список автомобилей (госю номенр / VIN) - множественное, строка
+            "MOUNTING_RESPONSIBLE": "UF_CRM_1619430831",        // Ответственный за монтаж (указать себя, если монтаж не требуется) - объект CRM
+            "MOUNTING_NOTES": "UF_CRM_1619548732",              // Примечания к монтажу     - строка
+            "MOUNTING_DEADLINE": "UF_CRM_1618420085594",        // Крайний срок монтажа     - дата
+            "MOUNTING_ADDRESS": "UF_CRM_1618420018484",         // Адрес проведения монтажа - адрес
+            "MOUNTING_CONTACT": "UF_CRM_1619103085",            // Контакт для Монтажа      - объект CRM
+            "MOUNTING_PHOTOBINDING": "UF_CRM_1618420539591",    // Фотопривязка      - множественное, фаил
+            
+            "PRODUCTION_RESPONSIBLE": "UF_CRM_1619201495",      // Кто изготавливает материалы              - объект CRM
+            "PRODUCTION_TECHNOLOGY": "UF_CRM_1635937207",       // Технология изготовления (печать)         - выбор из списка
+            "PRODUCTION_DEADLINE": "UF_CRM_1619190696514",      // Крайний срок сдачи готовых материалов    - дата
+            "PRODUCTION_NOTES": "UF_CRM_1625667202",            // Описание Заказа:                         - строка
+            "PRODUCTION_FILES": "UF_CRM_1621607276561",         // Файлы для изготовления                   - множественное, фаил
+            "PRODUCTION_HREF": "UF_CRM_1619102989472",          // Ссылка на файл для изготовления          - множественное, url
+
+        }
+
+        // СОЗДАНИЕ ЗАДАЧИ НА ПРООИЗВОДСТВО - назвние ID полей
+        const TASK_PRODUCTION_FIELD = {
+            "RESPONSIBLE": "responsibleForTaskProduction",      // ответственный за производство
+            "DEADLINE": "deadlineForTaskProduction",            // крайняя дата монтажа
+            "TECHNOLOGY": "technologyForTaskProduction",        // технологтия производства
+            "DESCRIPTION": "descriptionForTaskProduction",      // примечание к задаче
+            "FILES": "filesForTaskProduction",                  // файлы прикрепленные к задаче
+            "HREF": "hrefForTaskProduction"                     // ссылка на дополнительные материалы
+        }
+        // СОЗДАНИЕ ЗАДАЧИ НА ПРООИЗВОДСТВО - классы элементов в которых выводится список групп и их элементов
+        const TASK_PRODUCTION_CHECKLIST = {
+            "CONTAINER": "production-task-new-checklist",                       // контейнер в котором расположены все группы и чек-листы
+            "TYPE_SELECT": "production-task-new-checklist-type",                // объект SELECT: multiple - на каждую группу отдельно, one - на каждую единицу отдельно
+            // контейнер на каждую группу отдельно
+            "MULT_GROUPS_LIST": "production-task-new-multiple",                 // класс контейнера в котором расположены группы
+            "MULT_GROUP": "production-task-group",                              // класс контейнера одной группы
+            "MULT_GROUP_NAME": "production-task-group-header-title-input",      // класс объекта INPUT с названием группы
+            "MULT_ADD_GROUP": "production-task-group-addgroup",                 // класс объекта добавления группы
+            "MULT_DEL_GROUP": "production-task-group-delgroup",                 // класс объекта удаления группы
+            
+            "MULT_ELEM_GROUP_LIST": "production-task-group-list",               // класс контейнера в котором расположенчек-лист группы
+            "MULT_ELEM_GROUP_ITEM": "production-task-group-item",               // класс контейнера одной записи группы
+            "MULT_ELEM_GROUP_NAME": "production-task-group-item-name-input",    // класс объекта INPUT с названием элемента группы
+            "MULT_ELEM_GROUP_AREA": "production-task-group-item-area-input",    // класс объекта INPUT с площадъю элемента группы
+            "MULT_ADD_ELEM_GROUP": "production-task-group-item-add",            // класс объекта добавления элемента в группу
+            "MULT_DEL_ELEM_GROUP": "production-task-group-item-remove",         // класс объекта удаления элемента из группы
+            // контейнер на каждую единицу отдельно
+            "ONE_ELEM_GROUP_LIST": "production-task-one",                       // класс контейнера в котором расположенчек-лист группы
+            "ONE_ELEM_GROUP_ITEM": "pproduction-task-one-item",                 // класс контейнера одной записи
+            "ONE_ELEM_GROUP_NAME": "production-task-one-name-input",            // класс объекта INPUT с названием элемента группы
+            "ONE_ELEM_GROUP_AREA": "production-task-one-area-input",            // класс объекта INPUT с площадъю элемента группы
+            "ONE_ADD_ELEM_GROUP": "production-task-one-add",                    // класс объекта добавления элемента в группу
+            "ONE_DEL_ELEM_GROUP": "production-task-one-remove",                 // класс объекта удаления элемента из группы
+
+            "HTML_ONE_ELEM": PRODUCTION_HTML_ONE_ELEM,
+            "HTML_MULT_ELEM": PRODUCTION_HTML_MULT_ELEM,
+            "HTML_MULT_GROUP": PRODUCTION_HTML_MULT_GROUP
+        }
+
+        // СОЗДАНИЕ ЗАДАЧИ НА ПРООИЗВОДСТВО - классы элементов в которых выводится список групп и их элементов
+        const TASK_MOUNTING_CHECKLIST = {
+            "CONTAINER": "mounting-task-new-checklist",                       // контейнер в котором расположены все группы и чек-листы
+            "TYPE_SELECT": "mounting-task-new-checklist-type",                // объект SELECT: multiple - на каждую группу отдельно, one - на каждую единицу отдельно
+            // контейнер на каждую группу отдельно
+            "MULT_GROUPS_LIST": "mounting-task-new-multiple",                 // класс контейнера в котором расположены группы
+            "MULT_GROUP": "mounting-task-group",                              // класс контейнера одной группы
+            "MULT_GROUP_NAME": "mounting-task-group-header-title-input",      // класс объекта INPUT с названием группы
+            "MULT_ADD_GROUP": "mounting-task-group-addgroup",                 // класс объекта добавления группы
+            "MULT_DEL_GROUP": "mounting-task-group-delgroup",                 // класс объекта удаления группы
+            
+            "MULT_ELEM_GROUP_LIST": "mounting-task-group-list",               // класс контейнера в котором расположенчек-лист группы
+            "MULT_ELEM_GROUP_ITEM": "mounting-task-group-item",               // класс контейнера одной записи группы
+            "MULT_ELEM_GROUP_NAME": "mounting-task-group-item-name-input",    // класс объекта INPUT с названием элемента группы
+            "MULT_ELEM_GROUP_AREA": "mounting-task-group-item-area-input",    // класс объекта INPUT с площадъю элемента группы
+            "MULT_ADD_ELEM_GROUP": "mounting-task-group-item-add",            // класс объекта добавления элемента в группу
+            "MULT_DEL_ELEM_GROUP": "mounting-task-group-item-remove",         // класс объекта удаления элемента из группы
+            // контейнер на каждую единицу отдельно
+            "ONE_ELEM_GROUP_LIST": "mounting-task-one",                       // класс контейнера в котором расположенчек-лист группы
+            "ONE_ELEM_GROUP_ITEM": "mounting-task-one-item",                  // класс контейнера одной записи
+            "ONE_ELEM_GROUP_NAME": "mounting-task-one-name-input",            // класс объекта INPUT с названием элемента группы
+            "ONE_ELEM_GROUP_AREA": "mounting-task-one-area-input",            // класс объекта INPUT с площадъю элемента группы
+            "ONE_ADD_ELEM_GROUP": "mounting-task-one-add",                    // класс объекта добавления элемента в группу
+            "ONE_DEL_ELEM_GROUP": "mounting-task-one-remove",                 // класс объекта удаления элемента из группы
+
+            // 
+            "HTML_ONE_ELEM": MOUNTING_HTML_ONE_ELEM,
+            "HTML_MULT_ELEM": MOUNTING_HTML_MULT_ELEM,
+            "HTML_MULT_GROUP": MOUNTING_HTML_MULT_GROUP
+
+        }
+
+
+
+
+
+        function getDataFields() {
+            let fields = {};
+
+            const elemResponsible = document.getElementById("responsibleForMounting");
+            const elemDesc = document.getElementById("descriptionForMounting");
+            const elemDeadline = document.getElementById("dataclodedtaskForMounting");
+            const elemAddress = document.getElementById("addressForMounting");
+            const elemContact = document.getElementById("contactForMounting");
+
+            fields[FIELD_DEAL["RESPONSIBLE_FOR_MOUNTING"]] = elemResponsible.dataset.id || "";
+            fields[FIELD_DEAL["NOTES_MOUNTING"]] = elemDesc.value;
+            fields[FIELD_DEAL["DEADLINE_MOUNTING"]] = elemDeadline.value;
+            fields[FIELD_DEAL["ADDRESS_MOUNTING"]] = elemAddress.value;
+            fields[FIELD_DEAL["CONTACT_MOUNTING"]] = elemContact.value;
+            fields[FIELD_DEAL["AUTOLIST"]] = this.getDataGroup();
+
+            // let autoList = this.getDataGroup();
+            // if (autoList.length > 0) {
+            //     fields[FIELD_DEAL["AUTOLIST"]] = autoList;
+            // }
+            return fields;
+        }
+
+
+        function eventTaskChecklist(params) {
+            // Чек-лист с автомобилями для создния задач  
+            const productionGroupsList = document.getElementsByClassName(params["CONTAINER"])[0];
+                
+            const productionTypeSelect = productionGroupsList.getElementsByClassName(params["TYPE_SELECT"])[0];
+            // Событие выбора варианта формирования задачи на производство
+            productionTypeSelect.addEventListener('change', async (e) => {
+                const productionMultGroup = productionGroupsList.getElementsByClassName(params["MULT_GROUPS_LIST"])[0];
+                const productionOneGroup = productionGroupsList.getElementsByClassName(params["ONE_ELEM_GROUP_LIST"])[0];
+                if (e.target.value === "multiple") {
+                    productionMultGroup.style.display = "block";
+                    productionOneGroup.style.display = "none";
+                    return;
+                }
+                productionMultGroup.style.display = "none";
+                productionOneGroup.style.display = "block";
+            })
+
+            const productionOneGroup = productionGroupsList.getElementsByClassName(params["ONE_ELEM_GROUP_LIST"])[0];
+            // Событие добавления или удаления записей в группе
+            productionOneGroup.addEventListener('click', async (e) => {
+                if (e.target.classList.contains(params["ONE_ADD_ELEM_GROUP"])) {
+                    // добавление записи
+                    productionOneGroup.insertAdjacentHTML("beforeend", params["HTML_ONE_ELEM"]);            
+                }
+                if (e.target.classList.contains(params["ONE_DEL_ELEM_GROUP"])) {
+                    // удаление записи
+                    const element = e.target.closest(`.${params["ONE_ELEM_GROUP_ITEM"]}`);
+                    if (element && (element.previousElementSibling || element.nextElementSibling)) {
+                        element.remove();
+                    }   
+                }
+            })
+
+            const productionMultGroup = productionGroupsList.getElementsByClassName(params["MULT_GROUPS_LIST"])[0];
+            // Событие добавления или удаления записи к группе задач
+            productionMultGroup.addEventListener('click', async (e) => {
+                if (e.target.classList.contains(params["MULT_ADD_ELEM_GROUP"])) {
+                    // добавление записи
+                    const container = e.target.closest(`.${params["MULT_ELEM_GROUP_LIST"]}`);
+                    // e.target.getElementsByClassName(TASK_PRODUCTION_CHECKLIST["MULT_ELEM_GROUP_LIST"])[0];
+                    container.insertAdjacentHTML("beforeend", params["HTML_MULT_ELEM"]);
+                }
+                if (e.target.classList.contains(params["MULT_DEL_ELEM_GROUP"])) {
+                    // удаление записи
+                    const element = e.target.closest(`.${params["MULT_ELEM_GROUP_ITEM"]}`);
+                    if (element && (element.previousElementSibling || element.nextElementSibling)) {
+                        element.remove();
+                    }   
+                }
+            })
+            // Событие добавления или удаления группы
+            productionMultGroup.addEventListener('click', async (e) => {
+                if (e.target.classList.contains(params["MULT_ADD_GROUP"])) {
+                    // добавление записи
+                    const groups = productionMultGroup.getElementsByClassName(params["MULT_GROUP"]);
+                    let getHTML = params["HTML_MULT_GROUP"];
+                    productionMultGroup.insertAdjacentHTML("beforeend", getHTML(groups.length + 1));
+                    
+                }
+                if (e.target.classList.contains(params["MULT_DEL_GROUP"])) {
+                    // удаление записи
+                    const element = e.target.closest(`.${params["MULT_GROUP"]}`);
+                    if (element && element.previousElementSibling && !element.nextElementSibling) {
+                        element.remove();
+                    }   
+                }
+            })
+        }
+
+        $(document).ready(function() {
+            BX24.ready(function() {
+                console.log("ID = ", {{ id }});
+                eventTaskChecklist(TASK_PRODUCTION_CHECKLIST);
+                eventTaskChecklist(TASK_MOUNTING_CHECKLIST);
+                resizeFrame();
+                const filterInput = document.getElementsByClassName("my-app")[0];
+                $(filterInput).bind("DOMSubtreeModified", (e) => {
+                    console.log("Изменился размер фрейма!");
+                    resizeFrame();
+                })
+            })
+        })
+
+        function resizeFrame() {
+            const size = BX24.getScrollSize();
+            const width = size.scrollWidth;
+            const elemBody = document.getElementsByTagName('body')[0];
+            const height = elemBody.offsetHeight;
+            console.log(`Устанавливаем размер фрейма = ${width}x${height}`)
+            BX24.resizeWindow(width, height);
+            // BX24.reloadWindow();
+            // location.reload();
+        }
+
+
+        function compareNumeric(a, b) {
+            if (+a > +b) return 1;
+            if (+a == +b) return 0;
+            if (+a < +b) return -1;
+        }
+
+
+    </script>
+</body>
+</html>
