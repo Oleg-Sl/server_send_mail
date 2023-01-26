@@ -1,7 +1,10 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from api_v1.views import (SendEmailViewSet)
+from api_v1.views import (
+    SendEmailViewSet,
+    SendEmailAsyncViewSet,
+)
 
 
 app_name = 'api_v1'
@@ -13,6 +16,7 @@ urlpatterns = [
     path('', include(router.urls)),
 
     path(r'send-email', SendEmailViewSet.as_view()),
+    path(r'send-email-async', SendEmailAsyncViewSet.as_view()),
 
 ]
 

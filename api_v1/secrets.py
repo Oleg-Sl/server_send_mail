@@ -33,9 +33,9 @@ def get_secrets():
 
 def get_webhook():
     if not os.path.exists(PATH_SECRET_FILE):
-        return None
+        return ""
 
-    webhook = None
+    webhook = ""
     with open(PATH_SECRET_FILE) as secrets_file:
         data = json.load(secrets_file)
         webhook = data.get("webhook", None)
