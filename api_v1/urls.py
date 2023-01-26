@@ -4,6 +4,7 @@ from rest_framework import routers
 from api_v1.views import (
     SendEmailViewSet,
     SendEmailAsyncViewSet,
+    GetSizeQueueEmailsViewSet,
 )
 
 
@@ -17,6 +18,7 @@ urlpatterns = [
 
     path(r'send-email', SendEmailViewSet.as_view()),
     path(r'send-email-async', SendEmailAsyncViewSet.as_view()),
+    path(r'get-size-queue-emails', GetSizeQueueEmailsViewSet.as_view()),
 
 ]
 

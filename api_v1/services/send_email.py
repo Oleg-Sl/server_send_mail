@@ -49,6 +49,7 @@ def send(data):
             body = html_template.get_template_5(data)
         f_data = get_data_files_by_ids_in_bx24_(file_ids)
         res = send_mail_(email, head, body, f_data, cc_email)
+        # time.sleep(5)
     except Exception as err:
         logger_errors.info({
             "to_email": email,

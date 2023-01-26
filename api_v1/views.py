@@ -32,14 +32,25 @@ worker_emails.create()
 worker_emails.start()
 
 
+class GetSizeQueueEmailsViewSet(views.APIView):
+    def get(self, request):
+        global queue_emails
+        # print(queue_emails.qsize())
+        return Response(queue_emails.qsize(), status=status.HTTP_200_OK)
+
+
 class SendEmailAsyncViewSet(views.APIView):
     def post(self, request):
+        global worker_emails
         logger_access.info({
             "request": request.data,
             "params": request.query_params,
         })
         queue_emails.send_queue(request.query_params)
-        # queue_emails.send_queue(request.GET)
+        if not worker_emails:
+            worker_emails = ThreadsSendEmail(queue_emails, COUNT_WORKERS)
+            worker_emails.create()
+            worker_emails.start()
         return Response(True, status=status.HTTP_200_OK)
 
 
