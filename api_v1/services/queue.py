@@ -1,6 +1,7 @@
 from queue import Queue
 
 
+# Очередь писем на отправку
 class EmailsQueue:
     def __init__(self, count_threads):
         self.input_queue = Queue()

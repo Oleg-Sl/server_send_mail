@@ -16,8 +16,11 @@ router = routers.DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
 
+    # Синхронная отправка писем
     path(r'send-email', SendEmailViewSet.as_view()),
+    # Асинхронная отправка писем
     path(r'send-email-async', SendEmailAsyncViewSet.as_view()),
+    # Получение размера очереди для асинхронной отправки писем
     path(r'get-size-queue-emails', GetSizeQueueEmailsViewSet.as_view()),
 
 ]

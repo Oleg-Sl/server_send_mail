@@ -12,7 +12,7 @@ import time
 from . import bitrix
 import logging
 
-
+# Создание логгера успешно выполненных запросов
 logger_success = logging.getLogger('success')
 logger_success.setLevel(logging.INFO)
 fh_success = logging.handlers.TimedRotatingFileHandler('./logs/success/success.log', when='D', interval=1, encoding="cp1251", backupCount=7)
@@ -20,6 +20,7 @@ formatter_success = logging.Formatter('[%(asctime)s] %(levelname).1s %(message)s
 fh_success.setFormatter(formatter_success)
 logger_success.addHandler(fh_success)
 
+# Создание логгера не выполненных запросов
 logger_errors = logging.getLogger('errors')
 logger_errors.setLevel(logging.INFO)
 fh_errors = logging.handlers.TimedRotatingFileHandler('./logs/errors/errors.log', when='D', interval=1, encoding="cp1251", backupCount=7)
@@ -28,6 +29,7 @@ fh_errors.setFormatter(formatter_errors)
 logger_errors.addHandler(fh_errors)
 
 
+# Отправка письма
 def send(data):
     email = data.get('email')
     head = data.get('title')
@@ -37,6 +39,7 @@ def send(data):
     body = ""
     f_data = []
     try:
+        # Формирование тела письма
         if post_type == "1":
             body = html_template.get_template_1(data)
         if post_type == "2":
@@ -47,10 +50,12 @@ def send(data):
             body = html_template.get_template_4(data)
         if post_type == "5":
             body = html_template.get_template_5(data)
+        # Получение данных файлов вложения в письмо
         f_data = get_data_files_by_ids_in_bx24_(file_ids)
+        # Отправка письма
         res = send_mail_(email, head, body, f_data, cc_email)
-        # time.sleep(5)
     except Exception as err:
+        # Логгирование данных случившейся ошибки
         logger_errors.info({
             "to_email": email,
             "err": err,
@@ -61,6 +66,7 @@ def send(data):
             "body": body
         })
 
+    # Логгирование данных успешно отправленного письма
     logger_success.info({
         "to_email": email,
         "copy_email": cc_email,
@@ -71,15 +77,17 @@ def send(data):
     })
 
 
-# отправка письма
+# непосредственная отправка письма
 def send_mail_(to_email, head, body, files_data, cc_email):
-
+    # Чтение секретных данных из файла
     with open("api_v1/mail_secrets.json") as secrets_file:
         secret_data = json.load(secrets_file)
 
+    # Если в файле отсутсвуют секретные данные
     if not secret_data or "server" not in secret_data or "username" not in secret_data or "password" not in secret_data:
         return None
 
+    # Формирование содержимого письма
     msg = MIMEMultipart()
     password = secret_data["password"]
     msg['From'] = "support@hrqyzmet.kz"
@@ -111,7 +119,7 @@ def send_mail_(to_email, head, body, files_data, cc_email):
     return True
 
 
-# Формирование списка данных файлов
+# Получение данных файлов из Битрикс
 def get_data_files_by_ids_in_bx24_(file_ids):
     res = []
     for file_id in file_ids.split(','):
@@ -123,7 +131,7 @@ def get_data_files_by_ids_in_bx24_(file_ids):
     return res
 
 
-# Скачивание файла из Битрикс
+# Скачиваие файла из Битрикс по его ID в хранилище
 def download_file_from_bx24_(file_id):
     f_info = bitrix.get_file_data(file_id)
     f_url = None

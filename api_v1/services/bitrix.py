@@ -9,6 +9,7 @@ from api_v1 import secrets
 API = secrets.get_webhook() + "{method}.json"
 
 
+# Поиск контакта по email в Битрикс
 def get_contact_by_email(email):
     method = "crm.contact.list"
     response = request_bx(method, {
@@ -19,6 +20,7 @@ def get_contact_by_email(email):
         return response["result"]
 
 
+# Добавление сделки в Битрикс
 def add_deal(fields):
     method = "crm.deal.add"
     response = request_bx(method, {
@@ -30,6 +32,7 @@ def add_deal(fields):
         return response["result"]
 
 
+# Получение файла из Битрикс
 def get_file_data(file_id):
     method = "disk.file.get"
     response = request_bx(method, {
@@ -40,7 +43,7 @@ def get_file_data(file_id):
         return response["result"]
 
 
-# Запрос к Битрикс
+# Выполнение запрос к Битрикс
 def request_bx(method, data, count=5):
     timeout = 60
     try:
